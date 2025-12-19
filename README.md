@@ -11,6 +11,14 @@ A Windows system tray application for controlling a remote Transmission BitTorre
 - Settings dialog for easy configuration
 - No manual configuration files needed
 
+## Download
+
+Download the latest release from the [Releases page](https://github.com/andreykats/transmission-agent-win/releases).
+
+**Windows 64-bit:** Download `TransmissionTrayAgent-vX.X.X-win-x64.exe`
+
+The executable is self-contained and includes the .NET 8 runtime - no additional installation required.
+
 ## Building
 
 ### Prerequisites
