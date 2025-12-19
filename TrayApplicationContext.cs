@@ -26,6 +26,9 @@ public class TrayApplicationContext : ApplicationContext
     private bool _wasAutoPausedByGame = false;
     private string? _gameNameThatTriggeredPause = null;
 
+    // Toggle notification state
+    private bool _shouldNotifyOnStateChange = false;
+
     // Icons for different states
     private Icon? _activeIcon;
     private Icon? _pausedIcon;
@@ -135,6 +138,9 @@ public class TrayApplicationContext : ApplicationContext
 
     public void UpdateIcon(TrayIconState newState)
     {
+        bool stateChanged = _currentState != newState;
+        TrayIconState previousState = _currentState;
+
         _currentState = newState;
 
         Icon? iconToUse = newState switch
@@ -160,6 +166,24 @@ public class TrayApplicationContext : ApplicationContext
         };
 
         _trayIcon.Text = $"Transmission Tray Agent - {stateText}";
+
+        // Show notification if state changed during a manual toggle
+        if (_shouldNotifyOnStateChange && stateChanged && !_settings.DisableNotifications)
+        {
+            _shouldNotifyOnStateChange = false; // Reset flag
+
+            // Only notify for Active <-> Paused transitions (not Disconnected)
+            if ((previousState == TrayIconState.Active && newState == TrayIconState.Paused) ||
+                (previousState == TrayIconState.Paused && newState == TrayIconState.Active))
+            {
+                _trayIcon.BalloonTipTitle = "Transmission Tray Agent";
+                _trayIcon.BalloonTipText = newState == TrayIconState.Paused
+                    ? "All torrents paused"
+                    : "All torrents resumed";
+                _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
+                _trayIcon.ShowBalloonTip(5000);
+            }
+        }
     }
 
     private void StartPolling()
@@ -241,6 +265,7 @@ public class TrayApplicationContext : ApplicationContext
         }
 
         _isToggling = true;
+        _shouldNotifyOnStateChange = true; // Enable notification on next state change
 
         try
         {
@@ -276,17 +301,12 @@ public class TrayApplicationContext : ApplicationContext
                 _wasAutoPausedByGame = false;
             }
 
-            // Show balloon tip based on what we tried to do
-            if (!_settings.DisableNotifications)
-            {
-                _trayIcon.BalloonTipTitle = "Transmission Tray Agent";
-                _trayIcon.BalloonTipText = wasPausing ? "All torrents paused" : "All torrents resumed";
-                _trayIcon.BalloonTipIcon = ToolTipIcon.Info;
-                _trayIcon.ShowBalloonTip(5000);
-            }
+            // Notification will be shown by UpdateIcon() when state changes
         }
         catch (Exception ex)
         {
+            _shouldNotifyOnStateChange = false; // Reset flag on error
+
             if (!_settings.DisableNotifications)
             {
                 _trayIcon.BalloonTipTitle = "Transmission Tray Agent";
